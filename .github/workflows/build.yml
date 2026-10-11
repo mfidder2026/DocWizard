@@ -1,0 +1,18 @@
+name: build
+on: [workflow_dispatch, push]
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [macos-14, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --extra desktop --group build --group dev
+      - run: uv run pytest -q
+      - run: uv run pyinstaller packaging/docwizard.spec --noconfirm --clean
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DocWizard-${{ matrix.os }}
+          path: dist/

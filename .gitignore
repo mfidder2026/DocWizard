@@ -1,0 +1,9 @@
+tests/private/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+out/
+build/
+dist/
+.DS_Store

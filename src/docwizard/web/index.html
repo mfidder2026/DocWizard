@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; frame-src 'self' about: data:; object-src 'none'; base-uri 'none'">
+  <title>DocWizard</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='2' width='22' height='28' rx='4' fill='%234f5bd5'/%3E%3Cpath d='M8 10h12M8 15h12M8 20h7' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+  <script>
+    window.DOCWIZARD_TOKEN = "__DOCWIZARD_TOKEN__";
+    // Thema zo vroeg mogelijk toepassen (geen flits).
+    try {
+      var th = JSON.parse(localStorage.getItem("dw.theme") || '"system"');
+      if (th === "light" || th === "dark") document.documentElement.dataset.theme = th;
+    } catch (e) {}
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Naar inhoud</a>
+  <div id="app" class="app">
+    <aside id="sidebar" class="sidebar" aria-label="Navigatie"></aside>
+    <main id="main" class="main" tabindex="-1">
+      <div class="boot"><span class="boot-dot"></span><span data-i18n="common.loading">Laden…</span></div>
+    </main>
+    <aside id="docpanel" class="docpanel" aria-label="Document"></aside>
+  </div>
+  <noscript>DocWizard heeft JavaScript nodig.</noscript>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

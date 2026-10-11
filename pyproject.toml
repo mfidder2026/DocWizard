@@ -1,0 +1,38 @@
+[project]
+name = "docwizard"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.12"
+dependencies = [
+    "beautifulsoup4>=4.15.0",
+    "fastapi>=0.143.0",
+    "httpx>=0.28.1",
+    "lxml>=6.1.3",
+    "markdown-it-py>=4.2.0",
+    "pillow>=12.3.0",
+    "pypdf>=6.20.0",
+    "python-multipart>=0.0.32",
+    "trafilatura>=2.3.1",
+    "uvicorn[standard]>=0.54.0",
+]
+
+[project.scripts]
+docwizard = "docwizard.app:main"
+
+[project.optional-dependencies]
+desktop = [
+    "pywebview>=6.2.1",
+]
+
+[build-system]
+requires = ["uv_build>=0.13.0,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+build = [
+    "pyinstaller>=6.22.3",
+]
+dev = [
+    "pytest>=9.1.1",
+    "python-docx>=1.2.0",
+]
