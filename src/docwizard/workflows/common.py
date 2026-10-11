@@ -48,6 +48,14 @@ def extract_text(path: str | Path, max_chars: int = 400_000) -> str:
         if ext in (".docx", ".dotx", ".docm"):
             md, _ = docx_to_markdown(p, skip_front=False)
             return md[:max_chars]
+        if ext in (".pptx", ".potx"):
+            from pptx import Presentation
+            out = []
+            for i, slide in enumerate(Presentation(str(p)).slides, 1):
+                texts = [sh.text_frame.text for sh in slide.shapes if sh.has_text_frame and sh.text_frame.text.strip()]
+                notes = slide.notes_slide.notes_text_frame.text if slide.has_notes_slide else ""
+                out.append(f"## Dia {i}\n" + "\n".join(texts) + (f"\n\nNotities: {notes}" if notes else ""))
+            return "\n\n".join(out)[:max_chars]
         if ext == ".pdf":
             from pypdf import PdfReader
             reader = PdfReader(str(p))
@@ -122,7 +130,7 @@ def current_document(ctx: JobContext, use_attachments: bool = True) -> tuple[dic
     for f in (attachments(ctx) if use_attachments else []):
         if f["name"].lower().endswith((".docx", ".dotx", ".docm")):
             return import_docx(ctx, f["path"], f["name"])
-    docs = repo.list_documents(ctx.project_id) if ctx.project_id else []
+    docs = [d for d in (repo.list_documents(ctx.project_id) if ctx.project_id else []) if d.get("kind", "docx") == "docx"]
     for d in docs:
         if d.get("current_version_id"):
             v = repo.get_version(d["current_version_id"])

@@ -224,7 +224,12 @@ class LLMClient:
                     pass
                 raise LLMCancelled(state.result(model, messages, time.monotonic() - t0))
             stream_task.result()
-        return state.result(model, messages, time.monotonic() - t0)
+        res = state.result(model, messages, time.monotonic() - t0)
+        if not res.text.strip() and res.reasoning.strip() and (think is False or json_schema is not None):
+            # Some servers (e.g. LM Studio with Qwen + structured output) stream the actual answer in the
+            # reasoning channel. Without thinking, that channel *is* the answer.
+            res.text, res.reasoning = res.reasoning.strip(), ""
+        return res
 
     async def _stream_with_fallback(self, body: dict, state: _StreamState) -> None:
         try:
@@ -284,6 +289,8 @@ class LLMClient:
                 json_schema=js if use_server_schema else None, schema_name=name, **kw,
             )
             last_text = res.text
+            if not res.text.strip() and not res.reasoning.strip():
+                raise LLMError(f"{self.conn.name}: het model gaf een leeg antwoord (is het model nog geladen?)")
             try:
                 return _validate(schema, extract_json(res.text))
             except (ValueError, ValidationError) as e:

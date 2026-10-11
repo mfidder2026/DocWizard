@@ -3,6 +3,7 @@ from .chat import auto, chat
 from .diagram import diagram
 from .documents import add_chapter, enrich, new_document
 from .edits import correct, review, translate
+from .presentation import presentation
 from .jobs import JobContext, JobRunner, bus, runner
 
 PIPELINES = {
@@ -15,6 +16,7 @@ PIPELINES = {
     "review": review,
     "enrich": enrich,
     "diagram": diagram,
+    "presentation": presentation,
 }
 
 for _name, _fn in PIPELINES.items():

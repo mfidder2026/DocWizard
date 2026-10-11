@@ -362,10 +362,25 @@ class JobRunner:
                 ctx.emit("job_failed", error="Geannuleerd")
             except Exception as e:  # noqa: BLE001 — every failure must reach the UI
                 log.error("job %s failed: %s", job_id, traceback.format_exc())
-                repo.update_job(job_id, status="failed", error=str(e))
-                ctx.emit("job_failed", error=f"{type(e).__name__}: {e}")
+                msg = friendly_error(e, ctx)
+                repo.update_job(job_id, status="failed", error=msg)
+                ctx.emit("job_failed", error=msg)
             finally:
                 self.contexts.pop(job_id, None)
+
+
+def friendly_error(e: Exception, ctx: JobContext | None = None) -> str:
+    """Turn technical failures into something the user can act on."""
+    import httpx
+    if isinstance(e, (httpx.ConnectError, httpx.ConnectTimeout)):
+        url = str(getattr(getattr(e, "request", None), "url", "")) or "de modelserver"
+        return (f"De AI-server is niet bereikbaar ({url}). Start LM Studio, Ollama of MTPLX, of kies in "
+                f"Instellingen → AI-verbindingen een server die draait. Klik daarna op Hervatten.")
+    if isinstance(e, httpx.ReadTimeout):
+        return "De AI-server reageerde te lang niet. Klik op Hervatten om verder te gaan."
+    if isinstance(e, httpx.RemoteProtocolError):
+        return "De verbinding met de AI-server werd verbroken (is het model gestopt?). Klik op Hervatten."
+    return f"{type(e).__name__}: {e}"
 
 
 runner = JobRunner()

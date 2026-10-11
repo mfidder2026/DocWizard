@@ -1,4 +1,4 @@
-// Sjablonen: uploaden (.docx/.dotx), lijst, en profiel bekijken (structuur, velden, huisstijl).
+// Sjablonen: uploaden (.docx/.dotx en .pptx/.potx), lijst, en profiel bekijken (structuur, velden, huisstijl).
 import { t } from "../i18n.js";
 import { api } from "./api.js";
 import { h, mount, toast, emptyState, fmtDate, fmtBytes } from "./dom.js";
@@ -44,7 +44,7 @@ function renderList(list, detail) {
 function uploadCard() {
   const nameInput = h("input", { type: "text", placeholder: "Architecture Quick Scan", "aria-label": t("tpl.name") });
   const fileLabel = h("span", { class: "drop-text" }, t("tpl.dropHere"));
-  const fileInput = h("input", { type: "file", accept: ".docx,.dotx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.wordprocessingml.template", hidden: true,
+  const fileInput = h("input", { type: "file", accept: ".docx,.dotx,.pptx,.potx", hidden: true,
     onchange: (e) => pick(e.target.files[0]) });
   const btn = h("button", { class: "btn primary", disabled: true, onclick: () => upload() }, icon("upload", 14), t("tpl.upload"));
   const err = h("div", { class: "field-error" });
@@ -57,10 +57,10 @@ function uploadCard() {
   function pick(f) {
     err.textContent = "";
     if (!f) return;
-    if (!/\.(docx|dotx)$/i.test(f.name)) { err.textContent = t("tpl.chooseFile"); return; }
+    if (!/\.(docx|dotx|pptx|potx)$/i.test(f.name)) { err.textContent = t("tpl.chooseFile"); return; }
     pendingFile = f;
     mount(fileLabel, h("strong", null, f.name), h("span", { class: "muted" }, ` · ${fmtBytes(f.size)}`));
-    if (!nameInput.value) nameInput.value = f.name.replace(/\.(docx|dotx)$/i, "").replace(/[_-]+/g, " ");
+    if (!nameInput.value) nameInput.value = f.name.replace(/\.(docx|dotx|pptx|potx)$/i, "").replace(/[_-]+/g, " ");
     btn.disabled = false;
   }
 

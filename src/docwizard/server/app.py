@@ -29,7 +29,10 @@ from ..wordengine.reader import DocModel
 
 WEB = Path(__file__).resolve().parent.parent / "web"
 TOKEN = os.environ.get("DOCWIZARD_TOKEN") or secrets.token_urlsafe(24)
-ACTIONS = {"auto", "chat", "new_document", "add_chapter", "translate", "correct", "review", "enrich", "diagram"}
+ACTIONS = {"auto", "chat", "new_document", "add_chapter", "translate", "correct", "review", "enrich", "diagram",
+           "presentation"}
+MIME = {".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation"}
 
 
 @asynccontextmanager
@@ -150,14 +153,18 @@ async def templates():
 
 @app.post("/api/templates")
 async def upload_template(file: UploadFile = File(...), name: str = Form("")):
-    if not file.filename.lower().endswith((".docx", ".dotx", ".docm")):
-        raise HTTPException(400, "Alleen .docx/.dotx/.docm")
+    if not file.filename.lower().endswith((".docx", ".dotx", ".docm", ".pptx", ".potx")):
+        raise HTTPException(400, "Alleen Word- (.docx/.dotx) of PowerPoint-sjablonen (.pptx/.potx)")
     tid = db.new_id()
     dest = app_paths().templates / f"{tid}{Path(file.filename).suffix.lower()}"
     with dest.open("wb") as fh:
         shutil.copyfileobj(file.file, fh)
     try:
-        profile = await asyncio.to_thread(analyze_template, dest)
+        if dest.suffix in (".pptx", ".potx"):
+            from ..pptengine import analyze_pptx_template
+            profile = {"kind": "pptx", **(await asyncio.to_thread(analyze_pptx_template, dest))}
+        else:
+            profile = {"kind": "docx", **(await asyncio.to_thread(analyze_template, dest))}
     except Exception as e:  # noqa: BLE001
         dest.unlink(missing_ok=True)
         raise HTTPException(400, f"Kon het sjabloon niet lezen: {e}") from e
@@ -279,12 +286,14 @@ def _version(vid: str) -> dict:
 async def download(vid: str):
     v = _version(vid)
     return FileResponse(v["path"], filename=Path(v["path"]).name,
-                        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+                        media_type=MIME.get(Path(v["path"]).suffix.lower(), "application/octet-stream"))
 
 
 @app.get("/api/versions/{vid}/preview")
 async def preview(vid: str):
     v = _version(vid)
+    if v["path"].lower().endswith(".pptx"):
+        return HTMLResponse(await asyncio.to_thread(_slides_html, Path(v["path"])))
     cache = app_paths().cache / "previews" / f"{vid}.html"
     if not cache.exists():
         cache.parent.mkdir(parents=True, exist_ok=True)
@@ -295,6 +304,10 @@ async def preview(vid: str):
 @app.get("/api/versions/{vid}/outline")
 async def outline(vid: str):
     v = _version(vid)
+    if v["path"].lower().endswith(".pptx"):
+        deck = Path(v["path"]).with_suffix(".deck.json")
+        slides = json.loads(deck.read_text(encoding="utf-8"))["deck"]["slides"] if deck.exists() else []
+        return [{"number": str(i), "title": s.get("title", ""), "level": 1} for i, s in enumerate(slides, 1)]
     m = await asyncio.to_thread(DocModel.open, v["path"])
     return [{"number": n.number, "title": n.title, "level": n.level} for n in m.outline()]
 
@@ -307,6 +320,23 @@ async def open_version(vid: str, body: dict | None = None):
     else:
         open_with_default_app(v["path"])
     return {"ok": True}
+
+
+def _slides_html(pptx_path: Path) -> str:
+    """Slide previews (rendered by the pptengine at build time) as one scrollable HTML fragment."""
+    import base64
+    prev = pptx_path.with_suffix(".previews")
+    imgs = sorted(prev.glob("*.png")) if prev.exists() else []
+    if not imgs:
+        return "<p>Geen voorvertoning beschikbaar. Open de presentatie in PowerPoint.</p>"
+    parts = ['<div class="dw-slides" style="display:flex;flex-direction:column;gap:14px">']
+    for i, p in enumerate(imgs, 1):
+        b64 = base64.b64encode(p.read_bytes()).decode()
+        parts.append(f'<figure style="margin:0"><img alt="Dia {i}" style="width:100%;border-radius:6px;'
+                     f'box-shadow:0 1px 4px rgba(0,0,0,.25)" src="data:image/png;base64,{b64}">'
+                     f'<figcaption style="font:12px sans-serif;color:#666;margin-top:4px">Dia {i}</figcaption></figure>')
+    parts.append("</div>")
+    return "".join(parts)
 
 
 # ---- jobs ------------------------------------------------------------------------------------------

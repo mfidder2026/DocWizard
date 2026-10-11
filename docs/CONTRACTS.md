@@ -178,3 +178,19 @@ Aanvullingen die de UI (`src/docwizard/web/`) gebruikt, afgestemd op `server/app
 - **Fouten**: de UI toont `detail` uit foutantwoorden letterlijk (string of FastAPI-validatielijst). Houd die teksten Nederlands.
 - **UI-voorkeuren** in `localStorage`: thema (systeem/licht/donker), ingeklapte panelen, de open chat en uitgeklapte projecten. `ui_language` komt uit de instellingen.
 - **pywebview**: zet `webview.settings['ALLOW_DOWNLOADS'] = True`, anders werken de downloadlinks niet in WKWebView.
+
+## Presentaties (pptengine) — toegevoegd 11-10-2026
+
+```python
+from docwizard.pptengine import (DeckSpec, normalize_deck, build_pptx, render_previews, analyze_pptx_template,
+                                 Theme, THEMES, theme_from_docx, DECK_PROMPT_GUIDE, DECK_JSON_SCHEMA, SLIDE_TYPES)
+deck: DeckSpec = normalize_deck(raw)                # lenient, fixes typical local-LLM mistakes
+report: dict = build_pptx(deck, out_path, *, theme: Theme | str = "helder", template: str | None = None,
+                          images: Callable[[str], tuple[bytes, str] | None] | None = None)
+                                                    # -> {"slides": n, "warnings": [...], "split": n}
+pngs: list[bytes] = render_previews(deck, *, theme=..., template=None, images=None, width=1280)
+profile: dict = analyze_pptx_template(path)         # layouts, placeholders, theme colours/fonts, slide size
+theme: Theme = theme_from_docx(docx_path)           # house colours + fonts taken from a Word template
+```
+Slide types: title, agenda, section, bullets, two_column, kpi, quote, timeline, table, chart, diagram, image, comparison, closing.
+Image refs in the spec: `diagram:<id>` (resolved by the caller) or media part names from a source .docx.

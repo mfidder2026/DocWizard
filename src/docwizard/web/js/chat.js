@@ -8,8 +8,8 @@ import { JobCard } from "./jobcard.js";
 import { state, app, emit, findChat, currentProject } from "./state.js";
 import { renameChat } from "./sidebar.js";
 
-export const ACTIONS = ["auto", "chat", "new_document", "add_chapter", "translate", "correct", "review", "enrich", "diagram"];
-const ACTION_ICON = { auto: "sparkle", chat: "message", new_document: "file", add_chapter: "plus", translate: "language", correct: "check", review: "eye", enrich: "book", diagram: "diagram" };
+export const ACTIONS = ["auto", "chat", "new_document", "add_chapter", "translate", "correct", "review", "enrich", "diagram", "presentation"];
+const ACTION_ICON = { auto: "sparkle", chat: "message", new_document: "file", add_chapter: "plus", translate: "language", correct: "check", review: "eye", enrich: "book", diagram: "diagram", presentation: "slides" };
 export const SLASH = [
   { cmd: "/nieuw", alias: ["/new"], action: "new_document" },
   { cmd: "/hoofdstuk", alias: ["/chapter"], action: "add_chapter" },
@@ -18,6 +18,7 @@ export const SLASH = [
   { cmd: "/review", alias: [], action: "review" },
   { cmd: "/verrijk", alias: ["/enrich"], action: "enrich" },
   { cmd: "/plaat", alias: ["/diagram"], action: "diagram" },
+  { cmd: "/presentatie", alias: ["/slides", "/dia", "/ppt", "/presentation"], action: "presentation" },
 ];
 const PRIV = [
   { v: "private", e: "🔒" }, { v: "project", e: "📁" }, { v: "all", e: "🗂" },

@@ -107,6 +107,7 @@ const nl = {
   "action.review": "Reviewen",
   "action.enrich": "Verrijken",
   "action.diagram": "Plaat maken",
+  "action.presentation": "Presentatie maken",
   "action.auto.desc": "DocWizard kiest zelf de juiste actie",
   "action.chat.desc": "Vraag stellen of overleggen, zonder document te wijzigen",
   "action.new_document.desc": "Nieuw document volgens het projectsjabloon",
@@ -116,6 +117,7 @@ const nl = {
   "action.review.desc": "Inhoudelijke review met opmerkingen",
   "action.enrich.desc": "Secties aanvullen met bronnen",
   "action.diagram.desc": "Architectuurplaat (draw.io) maken",
+  "action.presentation.desc": "PowerPoint-presentatie maken of aanpassen op basis van documenten",
 
   "job.running": "Bezig",
   "job.queued": "In wachtrij",
@@ -351,6 +353,7 @@ const en = {
   "action.translate.desc": "Translate, keeping the formatting", "action.correct.desc": "Fix language and style with tracked changes",
   "action.review.desc": "Content review with comments", "action.enrich.desc": "Extend sections with sources",
   "action.diagram.desc": "Create an architecture diagram (draw.io)",
+  "action.presentation": "Create presentation", "action.presentation.desc": "Create or revise a PowerPoint deck from documents",
 
   "job.running": "Running", "job.queued": "Queued", "job.waiting": "Needs you", "job.paused": "Paused", "job.done": "Done",
   "job.failed": "Failed", "job.cancelled": "Stopped", "job.pause": "Pause", "job.resume": "Continue", "job.retry": "Resume", "job.retryTip": "Restart from the last checkpoint; sections already written are skipped", "job.stop": "Stop",

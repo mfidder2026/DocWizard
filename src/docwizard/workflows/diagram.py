@@ -53,42 +53,10 @@ async def diagram(ctx: JobContext) -> dict:
         context = "\n\n".join(bits)
 
     async with ctx.step("ontwerp"):
-        system = ("Je bent een enterprise-architect die heldere architectuurplaten ontwerpt. Je levert alleen de "
-                  "semantiek (elementen, groepen/lagen, relaties); layout gebeurt automatisch.\n\n" + SPEC_PROMPT_GUIDE)
-        user = (f"{context}\n\nGevraagde plaat: {request}\n"
-                + (f"Notatie: {notation}\n" if notation else "Kies de notatie: 'archimate' voor architectuurlagen, "
-                                                             "'c4' voor software/containers, anders 'generic'.\n")
-                + "Gebruik Nederlandse labels (kort, max 4 woorden), 6–20 elementen, zinvolle relaties. "
-                  "Antwoord met alleen de JSON-spec.")
-        raw = None
-        try:
-            res = await ctx.client("writer").chat([{"role": "system", "content": system},
-                                                   {"role": "user", "content": user}],
-                                                  json_schema=SPEC_JSON_SCHEMA, temperature=0.3, max_tokens=3000,
-                                                  cancel=ctx.cancel)
-            raw = res.text
-        except Exception as e:  # noqa: BLE001
-            ctx.log(f"Gestructureerde output niet ondersteund, vrije tekst gebruikt ({e})", "warn")
-            raw = await ctx.llm([{"role": "system", "content": system}, {"role": "user", "content": user}],
-                                key="ontwerp", temperature=0.3, max_tokens=3000)
-        ctx.emit("token", persist=False, key="ontwerp", text=raw[:4000])
-        try:
-            data = json.loads(raw)
-        except ValueError:
-            data = extract_json(raw)
-        spec = normalize_spec(data)
-        ctx.detail("ontwerp", f"{len(spec.nodes)} elementen, {len(spec.edges)} relaties ({spec.notation})")
+        spec, data = await design_diagram(ctx, request, context, notation, key="ontwerp")
 
     async with ctx.step("tekenen"):
-        did = db.new_id()
-        d = diagram_dir(ctx.project_id)
-        name = safe_name(spec.title or request[:60] or "plaat")
-        (d / f"{did}.drawio").write_text(build_drawio(spec), encoding="utf-8")
-        (d / f"{did}.svg").write_text(render_svg(spec), encoding="utf-8")
-        (d / f"{did}.png").write_bytes(render_png(spec, scale=2.0))
-        (d / f"{did}.json").write_text(json.dumps({"name": name, "spec": data}, ensure_ascii=False, indent=1),
-                                       encoding="utf-8")
-        ctx.emit("artifact", kind="diagram", id=did, name=f"{name}.drawio", url=f"/api/diagrams/{did}.svg")
+        did, name = save_diagram(ctx, spec, data, request)
 
     async with ctx.step("controle"):
         problems = _layout_check(spec)
@@ -114,6 +82,49 @@ async def diagram(ctx: JobContext) -> dict:
             f"Digikoppeling toe'* om hem aan te passen.\n\n![{name}](/api/diagrams/{did}.svg)",
             {"diagram_id": did})
     return result
+
+
+async def design_diagram(ctx: JobContext, request: str, context: str = "", notation: str = "", *, key: str):
+    """LLM → semantic spec (layout happens in the drawio module). Returns (spec, raw_dict)."""
+    system = ("Je bent een enterprise-architect die heldere architectuurplaten ontwerpt. Je levert alleen de "
+              "semantiek (elementen, groepen/lagen, relaties); layout gebeurt automatisch.\n\n" + SPEC_PROMPT_GUIDE)
+    user = (f"{context}\n\nGevraagde plaat: {request}\n"
+            + (f"Notatie: {notation}\n" if notation else "Kies de notatie: 'archimate' voor architectuurlagen, "
+                                                         "'c4' voor software/containers, anders 'generic'.\n")
+            + "Gebruik Nederlandse labels (kort, max 4 woorden), 6–20 elementen, zinvolle relaties. "
+              "Antwoord met alleen de JSON-spec.")
+    try:
+        res = await ctx.client("writer").chat([{"role": "system", "content": system},
+                                               {"role": "user", "content": user}],
+                                              json_schema=SPEC_JSON_SCHEMA, temperature=0.3, max_tokens=3000,
+                                              cancel=ctx.cancel, think=False)
+        raw = res.text
+    except Exception as e:  # noqa: BLE001
+        ctx.log(f"Gestructureerde output niet ondersteund, vrije tekst gebruikt ({e})", "warn")
+        raw = await ctx.llm([{"role": "system", "content": system}, {"role": "user", "content": user}],
+                            key=key, temperature=0.3, max_tokens=3000)
+    ctx.emit("token", persist=False, key=key, text=raw[:4000])
+    try:
+        data = json.loads(raw)
+    except ValueError:
+        data = extract_json(raw)
+    spec = normalize_spec(data)
+    ctx.detail(key, f"{len(spec.nodes)} elementen, {len(spec.edges)} relaties ({spec.notation})")
+    return spec, data
+
+
+def save_diagram(ctx: JobContext, spec, data, request: str = "") -> tuple[str, str]:
+    """Write .drawio/.svg/.png/.json for the project and announce the artifact. Returns (id, name)."""
+    did = db.new_id()
+    d = diagram_dir(ctx.project_id)
+    name = safe_name(spec.title or request[:60] or "plaat")
+    (d / f"{did}.drawio").write_text(build_drawio(spec), encoding="utf-8")
+    (d / f"{did}.svg").write_text(render_svg(spec), encoding="utf-8")
+    (d / f"{did}.png").write_bytes(render_png(spec, scale=2.0))
+    (d / f"{did}.json").write_text(json.dumps({"name": name, "spec": data}, ensure_ascii=False, indent=1),
+                                   encoding="utf-8")
+    ctx.emit("artifact", kind="diagram", id=did, name=f"{name}.drawio", url=f"/api/diagrams/{did}.svg")
+    return did, name
 
 
 def _layout_check(spec) -> list[str]:

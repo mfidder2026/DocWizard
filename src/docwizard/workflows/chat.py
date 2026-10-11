@@ -19,15 +19,19 @@ ACTIONS = {
     "review": "een document beoordelen met opmerkingen",
     "enrich": "een bestaande sectie aanvullen/verrijken met extra informatie",
     "diagram": "een architectuurplaat/tekening maken of aanpassen",
+    "presentation": "een PowerPoint-presentatie (dia's) maken van documenten, of een bestaande presentatie aanpassen",
 }
 
 
 class Route(BaseModel):
-    actie: Literal["chat", "new_document", "add_chapter", "translate", "correct", "review", "enrich", "diagram"]
+    actie: Literal["chat", "new_document", "add_chapter", "translate", "correct", "review", "enrich", "diagram",
+                   "presentation"]
     doeltaal: str = Field(default="", description="bij vertalen: taalcode zoals en, de, fr")
     sectie: str = Field(default="", description="sectienummer of titel indien genoemd")
     notatie: str = Field(default="", description="bij platen: archimate, c4 of generic indien gevraagd")
     invoegen: bool = Field(default=False, description="plaat in het document plaatsen?")
+    aanpassen: bool = Field(default=False, description="bestaande presentatie/plaat aanpassen i.p.v. nieuw maken?")
+    aantal_dias: int = Field(default=0, description="gevraagd aantal dia's, 0 = niet genoemd")
     uitleg: str = ""
 
 
@@ -111,6 +115,10 @@ async def auto(ctx: JobContext) -> dict:
         ctx.params.setdefault("notation", r.notatie)
     if r.invoegen:
         ctx.params.setdefault("insert", True)
+    if r.aanpassen:
+        ctx.params.setdefault("revise", True)
+    if r.aantal_dias:
+        ctx.params.setdefault("slides", r.aantal_dias)
     ctx.job["pipeline"] = r.actie
     result = await PIPELINES[r.actie](ctx)
     if r.actie != "chat":

@@ -79,8 +79,10 @@ def _template_for(ctx: JobContext) -> dict:
     if not tid and ctx.project_id:
         tid = (repo.get_project(ctx.project_id) or {}).get("template_id")
     t = repo.get_template(tid) if tid else None
+    if t and not str(t["path"]).lower().endswith((".docx", ".dotx", ".docm")):
+        t = None
     if not t:
-        templates = repo.list_templates()
+        templates = [x for x in repo.list_templates() if str(x["path"]).lower().endswith((".docx", ".dotx", ".docm"))]
         if len(templates) == 1:
             t = templates[0]
     if not t:
