@@ -1,10 +1,21 @@
 name: build
-on: [workflow_dispatch, push]
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    tags: ["v*"]
+permissions:
+  contents: write
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
-        os: [macos-14, windows-latest]
+        include:
+          - os: macos-14
+            asset: DocWizard-macOS-AppleSilicon.zip
+          - os: windows-latest
+            asset: DocWizard-Windows.zip
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -12,7 +23,19 @@ jobs:
       - run: uv sync --extra desktop --group build --group dev
       - run: uv run pytest -q
       - run: uv run pyinstaller packaging/docwizard.spec --noconfirm --clean
+      - name: Zip (macOS)
+        if: runner.os == 'macOS'
+        run: ditto -c -k --sequesterRsrc --keepParent dist/DocWizard.app "${{ matrix.asset }}"
+      - name: Zip (Windows)
+        if: runner.os == 'Windows'
+        run: Compress-Archive -Path dist/DocWizard -DestinationPath "${{ matrix.asset }}"
       - uses: actions/upload-artifact@v4
         with:
-          name: DocWizard-${{ matrix.os }}
-          path: dist/
+          name: ${{ matrix.asset }}
+          path: ${{ matrix.asset }}
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ matrix.asset }}
+          generate_release_notes: true

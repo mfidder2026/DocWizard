@@ -18,5 +18,5 @@ exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name="DocWizard", console=F
 coll = COLLECT(exe, a.binaries, a.datas, name="DocWizard")
 if sys.platform == "darwin":
     app = BUNDLE(coll, name="DocWizard.app", bundle_identifier="app.fremen.docwizard",
-                 info_plist={"CFBundleShortVersionString": "0.1.0", "NSHighResolutionCapable": True,
+                 info_plist={"CFBundleShortVersionString": "0.2.0", "NSHighResolutionCapable": True,
                              "LSMinimumSystemVersion": "12.0"})
