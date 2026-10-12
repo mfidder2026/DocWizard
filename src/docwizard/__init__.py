@@ -1,5 +1,5 @@
 """DocWizard — lokale documentenwizard voor Word met lokale LLM's."""
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 
 def main() -> None:

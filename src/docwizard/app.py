@@ -7,6 +7,7 @@ from __future__ import annotations
 import argparse
 import logging
 import socket
+import sys
 import threading
 import time
 import webbrowser
@@ -21,6 +22,24 @@ def _free_port() -> int:
         return s.getsockname()[1]
 
 
+def ensure_streams() -> None:
+    """Windowed builds (PyInstaller console=False on Windows) have no stdout/stderr: sys.stdout is None,
+    which crashes anything that writes to or inspects it (uvicorn's log formatter calls isatty()).
+    Send output to a log file in the data directory instead."""
+    if sys.stdout is not None and sys.stderr is not None:
+        return
+    try:
+        from .config import app_paths
+        log = open(app_paths().logs / "docwizard.log", "a", encoding="utf-8", buffering=1)  # noqa: SIM115
+    except OSError:
+        import os
+        log = open(os.devnull, "w", encoding="utf-8")  # noqa: SIM115
+    if sys.stdout is None:
+        sys.stdout = log
+    if sys.stderr is None:
+        sys.stderr = log
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(prog="docwizard", description="DocWizard — lokale documentenwizard")
     ap.add_argument("--port", type=int, default=0)
@@ -28,11 +47,14 @@ def main() -> None:
     ap.add_argument("--server-only", action="store_true", help="alleen de engine starten")
     args = ap.parse_args()
 
+    ensure_streams()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
     from .server.app import TOKEN, app
 
     port = args.port or _free_port()
-    config = uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning", loop="asyncio")
+    # log_config=None: use our logging setup, not uvicorn's console formatter.
+    config = uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning", loop="asyncio",
+                            log_config=None)
     server = uvicorn.Server(config)
     thread = threading.Thread(target=server.run, daemon=True)
     thread.start()
