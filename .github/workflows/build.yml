@@ -29,6 +29,27 @@ jobs:
       - name: Zip (Windows)
         if: runner.os == 'Windows'
         run: Compress-Archive -Path dist/DocWizard -DestinationPath "${{ matrix.asset }}"
+      - name: Installer (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $iscc = (Get-Command iscc.exe -ErrorAction SilentlyContinue).Source
+          if (-not $iscc) { $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" }
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress; $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" }
+          $version = (uv run python -c "import docwizard; print(docwizard.__version__)").Trim()
+          & $iscc "/DAppVersion=$version" packaging/windows/DocWizard.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Copy-Item dist/DocWizard-Setup.exe DocWizard-Setup.exe
+      - uses: actions/upload-artifact@v4
+        if: runner.os == 'Windows'
+        with:
+          name: DocWizard-Setup.exe
+          path: DocWizard-Setup.exe
+      - name: Attach installer to release
+        if: runner.os == 'Windows' && startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: DocWizard-Setup.exe
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset }}

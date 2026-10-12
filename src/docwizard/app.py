@@ -72,8 +72,9 @@ def main() -> None:
         return
     if not args.browser:
         try:
-            import webview  # pywebview
-        except ImportError:
+            _open_window(url)
+        except Exception:  # noqa: BLE001 — never leave the user without a UI
+            logging.getLogger("docwizard").exception("Eigen venster kon niet starten; standaardbrowser gebruikt")
             args.browser = True
     if args.browser:
         webbrowser.open(url)
@@ -81,15 +82,39 @@ def main() -> None:
             thread.join()
         except KeyboardInterrupt:
             pass
-        server.should_exit = True
-        return
-    webview.settings["ALLOW_DOWNLOADS"] = True
-    window = webview.create_window("DocWizard", url, width=1440, height=920, min_size=(1000, 640),
-                                   text_select=True)
-    webview.start(private_mode=False)
     server.should_exit = True
     thread.join(timeout=5)
-    _ = (window, TOKEN)
+    _ = TOKEN
+
+
+def unblock_bundled_files() -> int:
+    """Windows marks files extracted from a downloaded zip as 'from the internet' (Mark of the Web).
+    .NET Framework then refuses to load Python.Runtime.dll, which pywebview needs. Remove the mark from
+    our own bundled files when we are allowed to (per-user installs; not under Program Files)."""
+    if sys.platform != "win32" or not getattr(sys, "frozen", False):
+        return 0
+    import os
+    from pathlib import Path
+    base = Path(getattr(sys, "_MEIPASS", Path(sys.executable).parent))
+    removed = 0
+    for f in base.rglob("*"):
+        if f.suffix.lower() in (".dll", ".exe", ".pyd") and f.is_file():
+            try:
+                os.remove(f"{f}:Zone.Identifier")
+                removed += 1
+            except OSError:
+                pass
+    return removed
+
+
+def _open_window(url: str) -> None:
+    n = unblock_bundled_files()
+    if n:
+        logging.getLogger("docwizard").info("Downloadmarkering verwijderd van %d bestanden", n)
+    import webview  # pywebview: WKWebView on macOS, Edge WebView2 on Windows
+    webview.settings["ALLOW_DOWNLOADS"] = True
+    webview.create_window("DocWizard", url, width=1440, height=920, min_size=(1000, 640), text_select=True)
+    webview.start(private_mode=False)
 
 
 if __name__ == "__main__":
